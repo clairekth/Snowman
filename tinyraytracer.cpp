@@ -16,7 +16,6 @@
 
 int envmap_width, envmap_height;
 std::vector<Vec3f> envmap;
-Model duck("../duck.obj");
 
 struct Light {
     Light(const Vec3f &p, const float i) : position(p), intensity(i) {}
@@ -171,12 +170,21 @@ int main() {
     Material      glass(1.5, Vec4f(0.0,  0.5, 0.1, 0.8), Vec3f(0.6, 0.7, 0.8),  125.);
     Material red_rubber(1.0, Vec4f(0.9,  0.1, 0.0, 0.0), Vec3f(0.3, 0.1, 0.1),   10.);
     Material     mirror(1.0, Vec4f(0.0, 10.0, 0.8, 0.0), Vec3f(1.0, 1.0, 1.0), 1425.);
+    Material snow(1.0, Vec4f(0.5, 0.0, 0., 0.), Vec3f(1., 1., 1.), 100.0);
 
     std::vector<Sphere> spheres;
-    spheres.push_back(Sphere(Vec3f(-3,    0,   -16), 2,      ivory));
-    spheres.push_back(Sphere(Vec3f(-1.0, -1.5, -12), 2,      glass));
-    spheres.push_back(Sphere(Vec3f( 1.5, -0.5, -18), 3, red_rubber));
-    spheres.push_back(Sphere(Vec3f( 7,    5,   -18), 4,     mirror));
+    // Bonhomme de neige
+    spheres.push_back(Sphere(Vec3f( 0, -2, -18), 2.5, snow));
+    spheres.push_back(Sphere(Vec3f( 0, 1.5, -18), 2., snow));
+    spheres.push_back(Sphere(Vec3f( 0, 4.25, -18), 1.5, snow));
+    // yeux
+    spheres.push_back(Sphere(Vec3f( 0.37, 2.7, -10), 0.1, red_rubber));
+    spheres.push_back(Sphere(Vec3f( -0.37, 2.7, -10), 0.1, red_rubber));
+    // boutons
+    spheres.push_back(Sphere(Vec3f( 0, 1.3, -10), 0.1, ivory));
+    spheres.push_back(Sphere(Vec3f( 0, 0.5, -10), 0.1, ivory));
+    spheres.push_back(Sphere(Vec3f( 0, -0.5, -10), 0.1, ivory));
+
 
     std::vector<Light>  lights;
     lights.push_back(Light(Vec3f(-20, 20,  20), 1.5));
