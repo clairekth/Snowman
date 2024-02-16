@@ -1,4 +1,4 @@
 # Ignore content built with CMake
 build/
-.vscode/
+.vscode/*
 !.vscode/settings.json
