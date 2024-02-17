@@ -1,12 +1,5 @@
-#define _USE_MATH_DEFINES
-#include <cmath>
-#include <algorithm>
-#include <limits>
-#include <iostream>
-#include <fstream>
-#include <vector>
-#include <chrono>
-#include "geometry.h"
+# include "main.hpp"
+
 
 float sdf_sphere(const Vec3f &p, const Vec3f &center, float radius)
 {
@@ -18,6 +11,7 @@ float sdf_sphere_displaced(const Vec3f &p, const Vec3f &center, float radius, fl
 	float displacement = (sin(16*p.x)*sin(16*p.y)*sin(16*p.z) + 1.)/2.;
 	return (p - center).norm() - radius + displacement * noise_amplitude;
 }
+
 
 float smooth_min(float a, float b, float k)
 {
@@ -86,10 +80,12 @@ int main(int argc, char **argv)
 #pragma omp parallel for
 	for (int j = 0; j < height; j++)
 	{ // actual rendering loop
+        // TODO: Add a progress bar
+        // FIXME: Is printed in random order
+        // std::cout << height - j << " lines remaining\n" << std::flush;
 		for (int i = 0; i < width; i++)
 		{
 			Vec3f origin(0, 0, 3);
-			// std::clog << "Lines remaining: " << height - j << std::fflush << "\r";
 			float dir_x = (i + 0.5) - width / 2.;
 			float dir_y = -(j + 0.5) + height / 2.; // this flips the image at the same time
 			float dir_z = -height / (2. * tan(fov / 2.));
@@ -110,7 +106,8 @@ int main(int argc, char **argv)
 	}
 	ofs.close();
 	std::chrono::duration<double> time_span = t2 - t1;
-	std::cout << "It took me " << time_span.count() << " seconds.";
+    // TODO: Add output to png with stb_image : stbi_write_png --> need a pixmap array instead of a framebuffer
+	std::cout << "output generated in " << time_span.count() << " seconds." << std::endl;
 
 	return 0;
 }
