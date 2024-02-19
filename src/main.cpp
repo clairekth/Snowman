@@ -4,12 +4,21 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-#define RAY_EPSILON 0.000001f
+#define RAY_EPSILON 0.0001f
 #define RAY_MAX_DIST 1000.f
-#define RAY_ITERATIONS 1024
+#define RAY_ITERATIONS 256
 
-#define WIDTH 640
-#define HEIGHT 480
+// #define RAY_EPSILON 0.0000001f
+// #define RAY_MAX_DIST 10000.f
+// #define RAY_ITERATIONS 2048
+
+#define WIDTH 1280
+#define HEIGHT 720
+
+float dot(const Vec3f &v1, const Vec3f &v2)
+{
+    return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
+}
 
 template <typename T>
 inline T lerp(const T &v0, const T &v1, float t)
@@ -83,15 +92,17 @@ float smooth_min(float a, float b, float k)
 
 float map(const Vec3f &orig)
 {
-    Vec3f sphere1(0, 0, -2);
+    Vec3f sphere1(-1.6, 1., -3);
     float radius1 = 1.5;
 
-    Vec3f sphere2(0, 1., -2);
+    Vec3f sphere2(1.4, -.2, -5);
     float radius2 = 1.5;
+
+    // float plane = orig.y + 1.;
 
     float d = sdf_sphere_displaced_noised(orig, sphere1, radius1, .1);
     d = smooth_min(d, sdf_sphere(orig, sphere2, radius2), 0.2);
-
+    // d = smooth_min(d, plane, 0.2);
     return d;
 }
 
@@ -125,18 +136,33 @@ Vec3f render(const Vec3f &orig, const Vec3f &dir)
     Vec3f hit;
     if (!sphere_trace(orig, dir, hit))
         return Vec3f(0.2, 0.7, 0.8);
-    Vec3f light_dir = (Vec3f(10, 10, 10) - hit).normalize(); // light is placed at (10,10,10)
-    float light_intensity = std::max(0.4f, light_dir * distance_field_normal(hit));
+    Vec3f color = Vec3f(1, 1, 1); // Default color
 
-    Vec3f color;
-    if (map(hit) == sdf_sphere_displaced_noised(hit, Vec3f(0, 0, -2), 1.5, .1))
+    Vec3f light_pos = Vec3f(-5, 5, 2);                                              // Position of the light source
+    Vec3f light_dir = -(hit - light_pos).normalize();                               // Direction of the light source from the hit point
+    float light_intensity = std::max(0.4f, light_dir * distance_field_normal(hit)); // Intensity max of the light source = 0.4
+
+    // Shadows
+    // FIXME: Shadows are not rendered correctly
+    Vec3f hit_tmp;
+    if (sphere_trace(hit + distance_field_normal(hit) * 0.1, light_dir, hit_tmp))
     {
-        color = Vec3f(1, 0, 0); // couleur de la première sphère
+        if ((hit_tmp - hit).norm() < (light_pos - hit).norm())
+        {
+            light_intensity *= 0.2;
+        }
     }
-    else
-    {
-        color = Vec3f(0, 1, 0); // couleur de la deuxième sphère
-    }
+
+    // TODO: A changer pour avoir une couleur par sphère : peut-être utiliser une classe pour chaque forme
+
+    // if (map(hit) == sdf_sphere_displaced_noised(hit, Vec3f(0, 0, -2), 1.5, .1))
+    // {
+    //     color = Vec3f(1, 0, 0); // couleur de la première sphère
+    // }
+    // else
+    // {
+    //     color = Vec3f(0, 1, 0); // couleur de la deuxième sphère
+    // }
 
     return color * light_intensity;
 }
