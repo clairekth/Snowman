@@ -5,18 +5,6 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-#define RAY_EPSILON 0.001f
-#define RAY_MAX_DIST 20.f
-#define RAY_ITERATIONS 512
-
-// #define RAY_EPSILON 0.0000001f
-// #define RAY_MAX_DIST 10000.f
-// #define RAY_ITERATIONS 2048
-
-#define WIDTH 800
-#define HEIGHT 600
-
-
 float lighting(const Vec3f &p)
 {
     Vec3f light_pos = Vec3f(-5, 5, 2);             // Position of the light source
@@ -56,15 +44,15 @@ float map(const Vec3f &orig, Vec3f *color = nullptr)
     return d;
 }
 
-bool sphere_trace(const Vec3f &orig, const Vec3f &dir, Vec3f &pos, Vec3f &color)
+bool sphere_trace(Camera &camera, Vec3f &pos, Vec3f &color)
 {
-    pos = orig;
+    pos = camera.pos;
     for (int i = 0; i < RAY_ITERATIONS; i++)
     {
         float d = map(pos, &color);
         if (d < RAY_EPSILON)
             return true;
-        pos = pos + dir * std::max(d * 0.1f, .01f);
+        pos = pos + camera.dir * d;
         if (d > RAY_MAX_DIST)
             break;
     }
@@ -81,11 +69,11 @@ Vec3f distance_field_normal(const Vec3f &pos)
     return Vec3f(nx, ny, nz).normalize();
 }
 
-Vec3f render(const Vec3f &orig, const Vec3f &dir)
+Vec3f render(Camera &camera)
 {
     Vec3f color = Vec3f(1, 1, 1); // Default color
     Vec3f hit;
-    if (!sphere_trace(orig, dir, hit, color))
+    if (!sphere_trace(camera, hit, color))
         return Vec3f(0.2, 0.7, 0.8);
 
     color = color * lighting(hit);
@@ -106,22 +94,7 @@ int main(int argc, char **argv)
 #pragma omp parallel for
     for (int j = 0; j < height; j++)
     { // actual rendering loop
-        // TODO: Add a progress bar
-        int percent = int(ceil(float(progress / (width * height)) * 100.f));
-        std::cout << "\r\033[K"; // Erase the entire current line.
-        std::cout << "progress : [";
-        if (percent % 5 == 0)
-        {
-            for (int i = 0; i < percent / 5; i++)
-            {
-                std::cout << "#";
-            }
-            for (int i = 0; i < 20 - percent / 5; i++)
-            {
-                std::cout << " ";
-            }
-            std::cout << "] " << percent << "%" << std::flush;
-        }
+        show_progress(progress, width, height);
         for (int i = 0; i < width; i++)
         {
             Vec3f origin(0, 0, 3);
@@ -129,7 +102,8 @@ int main(int argc, char **argv)
             float dir_y = -(j + 0.5) + height / 2.; // this flips the image at the same time
             float dir_z = -height / (2. * tan(fov / 2.));
             Vec3f dir = Vec3f(dir_x, dir_y, dir_z).normalize();
-            framebuffers[i + j * width] = render(origin, dir);
+            Camera camera(origin, dir);
+            framebuffers[i + j * width] = render(camera);
             progress++;
         }
     }

@@ -15,59 +15,9 @@
 #define WIDTH 800
 #define HEIGHT 600
 
-class Entity
-{
-public:
-    virtual float sdf(const Vec3f &pos) const = 0;
-};
-
-class Sphere : public Entity
-{
-public:
-    Vec3f center;
-    float radius;
-
-    Sphere(const Vec3f &c, const float r) : center(c), radius(r) {}
-
-    float sdf(const Vec3f &pos) const
-    {
-        return (pos - center).norm() - radius;
-    }
-};
-
-class Shape
-{
-public:
-    const std::vector<Entity *> entities;
-    const Vec3f color;
-    const float noise_amplitude;
-    const float smin_factor;
-
-    Shape(const std::vector<Entity *> e, const Vec3f &c, const float n, const float s) : entities(e), color(c), noise_amplitude(n), smin_factor(s) {}
-
-    float sdf(const Vec3f &pos) const
-    {
-        float displacement = 0.0;
-        if (noise_amplitude - 0.0001 >= 0)
-            displacement = -fractal_brownian_motion(pos * 3.4) * noise_amplitude;
-        float d = (entities.size() > 0) ? entities[0]->sdf(pos) : 1000.; // TODO: Change to defined value
-        for (size_t i = 1; i < entities.size(); i++)
-        {
-            d = smin(d, entities[i]->sdf(pos), smin_factor);
-        }
-        return d + displacement;
-    }
-
-    float smin(float a, float b, float k) const
-    {
-        if (k - 0.0001 < 0)
-            return std::min(a, b);
-        float tmp = k - std::abs(a - b);
-        float h = std::max(tmp, 0.f) / k;
-        return std::min(a, b) - h * h * h * k * (1. / 6.);
-    }
-};
-
+/******************************************************************
+ * FUNCTIONS                                                      *
+ ******************************************************************/
 template <typename T>
 inline T lerp(const T &v0, const T &v1, float t)
 {
@@ -137,5 +87,91 @@ float fractal_brownian_motion(const Vec3f &x)
     f += 0.0625 * noise(p);
     return f / 0.9375;
 }
+
+void show_progress(float progress, int width, int height)
+{
+    int percent = int(ceil(float(progress / (width * height)) * 100.f));
+    std::cout << "\r\033[K"; // Erase the entire current line.
+    std::cout << "progress : [";
+    if (percent % 5 == 0)
+    {
+        for (int i = 0; i < percent / 5; i++)
+        {
+            std::cout << "#";
+        }
+        for (int i = 0; i < 20 - percent / 5; i++)
+        {
+            std::cout << " ";
+        }
+        std::cout << "] " << percent << "%" << std::flush;
+    }
+}
+
+/******************************************************************
+ * STRUCTS                                                        *
+ ******************************************************************/
+struct Camera
+{
+    Vec3f pos;
+    Vec3f dir;
+
+    Camera(const Vec3f &pos, const Vec3f &dir) : pos(pos), dir(dir) {}
+};
+
+/******************************************************************
+ * CLASSES                                                        *
+ ******************************************************************/
+class Entity
+{
+public:
+    virtual float sdf(const Vec3f &pos) const = 0;
+};
+
+class Sphere : public Entity
+{
+public:
+    Vec3f center;
+    float radius;
+
+    Sphere(const Vec3f &c, const float r) : center(c), radius(r) {}
+
+    float sdf(const Vec3f &pos) const
+    {
+        return (pos - center).norm() - radius;
+    }
+};
+
+class Shape
+{
+public:
+    const std::vector<Entity *> entities;
+    const Vec3f color;
+    const float noise_amplitude;
+    const float smin_factor;
+
+    Shape(const std::vector<Entity *> e, const Vec3f &c, const float n, const float s) : entities(e), color(c), noise_amplitude(n), smin_factor(s) {}
+
+    float sdf(const Vec3f &pos) const
+    {
+        float displacement = 0.0;
+        if (noise_amplitude - 0.0001 >= 0)
+            displacement = -fractal_brownian_motion(pos * 3.4) * noise_amplitude;
+        float d = (entities.size() > 0) ? entities[0]->sdf(pos) : 1000.; // TODO: Change to defined value
+        for (size_t i = 1; i < entities.size(); i++)
+        {
+            d = smin(d, entities[i]->sdf(pos), smin_factor);
+        }
+        return d + displacement;
+    }
+
+    float smin(float a, float b, float k) const
+    {
+        if (k - 0.0001 < 0)
+            return std::min(a, b);
+        float tmp = k - std::abs(a - b);
+        float h = std::max(tmp, 0.f) / k;
+        return std::min(a, b) - h * h * h * k * (1. / 6.);
+    }
+};
 
 #endif // UTILS_HPP
