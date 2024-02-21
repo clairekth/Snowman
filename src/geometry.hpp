@@ -42,6 +42,7 @@ struct vec<3, T>
         return i <= 0 ? x : (1 == i ? y : z);
     }
     float norm() const { return std::sqrt(x * x + y * y + z * z); }
+    float dot(const vec<3, T> &v) const { return x * v.x + y * v.y + z * v.z; }
     vec<3, T> &normalize(T l = 1)
     {
         *this = (*this) * (l / norm());

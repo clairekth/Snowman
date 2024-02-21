@@ -1,117 +1,67 @@
 #include "main.hpp"
+
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-#define RAY_EPSILON 0.0001f
-#define RAY_MAX_DIST 1000.f
-#define RAY_ITERATIONS 256
+#define RAY_EPSILON 0.001f
+#define RAY_MAX_DIST 20.f
+#define RAY_ITERATIONS 512
 
 // #define RAY_EPSILON 0.0000001f
 // #define RAY_MAX_DIST 10000.f
 // #define RAY_ITERATIONS 2048
 
-#define WIDTH 1280
-#define HEIGHT 720
+#define WIDTH 800
+#define HEIGHT 600
 
-float dot(const Vec3f &v1, const Vec3f &v2)
+
+float lighting(const Vec3f &p)
 {
-    return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
+    Vec3f light_pos = Vec3f(-5, 5, 2);             // Position of the light source
+    Vec3f light_dir = (light_pos - p).normalize(); // Direction of the light source from the hit point
+
+    Vec3f n = distance_field_normal(p); // Normal at the hit point
+
+    return std::max(0.f, n.dot(light_dir));
 }
 
-template <typename T>
-inline T lerp(const T &v0, const T &v1, float t)
+float map(const Vec3f &orig, Vec3f *color = nullptr)
 {
-    return v0 + (v1 - v0) * std::max(0.f, std::min(1.f, t));
-}
+    Sphere sphere1(Vec3f(0.0, 1.0, -5.0), 1.0);
+    Sphere sphere2(Vec3f(0.0, 0.0, -5.0), 1.0);
+    Sphere sphere3(Vec3f(0.0, -1.0, -5.0), 1.0);
 
-float hash(const float n)
-{
-    float x = sin(n) * 43758.5453f;
-    return x - floor(x);
-}
+    Shape shape({&sphere1, &sphere2, &sphere3}, Vec3f(1.0, 0.5, 1.0), 0.0, 0.0);
 
-float noise(const Vec3f &x)
-{
-    Vec3f p(floor(x.x), floor(x.y), floor(x.z));
-    Vec3f f(x.x - p.x, x.y - p.y, x.z - p.z);
-    f = f * (f * (Vec3f(3.f, 3.f, 3.f) - f * 2.f));
-    float n = p * Vec3f(1.f, 57.f, 113.f);
-    return lerp(lerp(
-                    lerp(hash(n + 0.f), hash(n + 1.f), f.x),
-                    lerp(hash(n + 57.f), hash(n + 58.f), f.x), f.y),
-                lerp(
-                    lerp(hash(n + 113.f), hash(n + 114.f), f.x),
-                    lerp(hash(n + 170.f), hash(n + 171.f), f.x), f.y),
-                f.z);
-}
+    Sphere sphere4(Vec3f(-1.0, 1.0, -5.0), 0.7);
+    Sphere sphere5(Vec3f(1.0, 1.0, -5.0), 0.7);
 
-Vec3f rotate(const Vec3f &v)
-{
-    return Vec3f(Vec3f(0.00, 0.80, 0.60) * v, Vec3f(-0.80, 0.36, -0.48) * v, Vec3f(-0.60, -0.48, 0.64) * v);
-}
+    Shape shape2({&sphere4, &sphere5}, Vec3f(0.5, 1.0, 0.5), 0.1, 0.1);
 
-float fractal_brownian_motion(const Vec3f &x)
-{
-    Vec3f p = rotate(x);
-    float f = 0;
-    f += 0.5000 * noise(p);
-    p = p * 2.32;
-    f += 0.2500 * noise(p);
-    p = p * 3.03;
-    f += 0.1250 * noise(p);
-    p = p * 2.61;
-    f += 0.0625 * noise(p);
-    return f / 0.9375;
-}
+    std::vector<Shape> shapes = {shape, shape2};
 
-float sdf_sphere(const Vec3f &p, const Vec3f &center, float radius)
-{
-    return (p - center).norm() - radius;
-}
-
-float sdf_sphere_displaced(const Vec3f &p, const Vec3f &center, float radius, float noise_amplitude)
-{
-    float displacement = (sin(16 * p.x) * sin(16 * p.y) * sin(16 * p.z) + 1.) / 2.;
-    return (p - center).norm() - radius + displacement * noise_amplitude;
-}
-
-float sdf_sphere_displaced_noised(const Vec3f &p, const Vec3f &center, float radius, float noise_amplitude)
-{
-    float displacement = -fractal_brownian_motion(p * 3.4) * noise_amplitude;
-    return (p - center).norm() - radius - displacement;
-}
-
-float smooth_min(float a, float b, float k)
-{
-    float tmp = k - std::abs(a - b);
-    float h = std::max(tmp, float(0.)) / k;
-    return std::min(a, b) - h * h * h * k * (1. / 6.);
-}
-
-float map(const Vec3f &orig)
-{
-    Vec3f sphere1(-1.6, 1., -3);
-    float radius1 = 1.5;
-
-    Vec3f sphere2(1.4, -.2, -5);
-    float radius2 = 1.5;
-
-    // float plane = orig.y + 1.;
-
-    float d = sdf_sphere_displaced_noised(orig, sphere1, radius1, .1);
-    d = smooth_min(d, sdf_sphere(orig, sphere2, radius2), 0.2);
-    // d = smooth_min(d, plane, 0.2);
+    float d = RAY_MAX_DIST;
+    for (size_t i = 0; i < shapes.size(); i++)
+    {
+        float d_tmp = shapes[i].sdf(orig);
+        if (d_tmp < d)
+        {
+            d = d_tmp;
+            if (color)
+                *color = shapes[i].color;
+        }
+    }
     return d;
 }
 
-bool sphere_trace(const Vec3f &orig, const Vec3f &dir, Vec3f &pos)
+bool sphere_trace(const Vec3f &orig, const Vec3f &dir, Vec3f &pos, Vec3f &color)
 {
     pos = orig;
     for (int i = 0; i < RAY_ITERATIONS; i++)
     {
-        float d = map(pos);
+        float d = map(pos, &color);
         if (d < RAY_EPSILON)
             return true;
         pos = pos + dir * std::max(d * 0.1f, .01f);
@@ -133,38 +83,14 @@ Vec3f distance_field_normal(const Vec3f &pos)
 
 Vec3f render(const Vec3f &orig, const Vec3f &dir)
 {
-    Vec3f hit;
-    if (!sphere_trace(orig, dir, hit))
-        return Vec3f(0.2, 0.7, 0.8);
     Vec3f color = Vec3f(1, 1, 1); // Default color
+    Vec3f hit;
+    if (!sphere_trace(orig, dir, hit, color))
+        return Vec3f(0.2, 0.7, 0.8);
 
-    Vec3f light_pos = Vec3f(-5, 5, 2);                                              // Position of the light source
-    Vec3f light_dir = -(hit - light_pos).normalize();                               // Direction of the light source from the hit point
-    float light_intensity = std::max(0.4f, light_dir * distance_field_normal(hit)); // Intensity max of the light source = 0.4
+    color = color * lighting(hit);
 
-    // Shadows
-    // FIXME: Shadows are not rendered correctly
-    Vec3f hit_tmp;
-    if (sphere_trace(hit + distance_field_normal(hit) * 0.1, light_dir, hit_tmp))
-    {
-        if ((hit_tmp - hit).norm() < (light_pos - hit).norm())
-        {
-            light_intensity *= 0.2;
-        }
-    }
-
-    // TODO: A changer pour avoir une couleur par sphère : peut-être utiliser une classe pour chaque forme
-
-    // if (map(hit) == sdf_sphere_displaced_noised(hit, Vec3f(0, 0, -2), 1.5, .1))
-    // {
-    //     color = Vec3f(1, 0, 0); // couleur de la première sphère
-    // }
-    // else
-    // {
-    //     color = Vec3f(0, 1, 0); // couleur de la deuxième sphère
-    // }
-
-    return color * light_intensity;
+    return color;
 }
 
 int main(int argc, char **argv)
@@ -174,16 +100,16 @@ int main(int argc, char **argv)
         factor = std::stoi(argv[1]);
     const int width = WIDTH * factor, height = HEIGHT * factor;
     const float fov = M_PI / 3.;
-    float progess = 0;
-    std::vector<Vec3f> framebuffer(width * height);
+    float progress = 0;
+    std::vector<Vec3f> framebuffers(width * height);
     std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
 #pragma omp parallel for
     for (int j = 0; j < height; j++)
     { // actual rendering loop
         // TODO: Add a progress bar
-        int percent = int(ceil(float(progess / (width * height)) * 100.f));
+        int percent = int(ceil(float(progress / (width * height)) * 100.f));
         std::cout << "\r\033[K"; // Erase the entire current line.
-        std::cout << "progess : [";
+        std::cout << "progress : [";
         if (percent % 5 == 0)
         {
             for (int i = 0; i < percent / 5; i++)
@@ -203,21 +129,21 @@ int main(int argc, char **argv)
             float dir_y = -(j + 0.5) + height / 2.; // this flips the image at the same time
             float dir_z = -height / (2. * tan(fov / 2.));
             Vec3f dir = Vec3f(dir_x, dir_y, dir_z).normalize();
-            framebuffer[i + j * width] = render(origin, dir);
-            progess++;
+            framebuffers[i + j * width] = render(origin, dir);
+            progress++;
         }
     }
     std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
     std::vector<unsigned char> pixmap(width * height * 3);
     for (int i = 0; i < height * width; ++i)
     {
-        Vec3f &c = framebuffer[i];
+        Vec3f &c = framebuffers[i];
         float max = std::max(c[0], std::max(c[1], c[2]));
         if (max > 1)
             c = c * (1. / max);
         for (int j = 0; j < 3; j++)
         {
-            pixmap[i * 3 + j] = (unsigned char)(255 * std::max(0.f, std::min(1.f, framebuffer[i][j])));
+            pixmap[i * 3 + j] = (unsigned char)(255 * std::max(0.f, std::min(1.f, framebuffers[i][j])));
         }
     }
     stbi_write_jpg("out.jpg", width, height, 3, pixmap.data(), 100);
