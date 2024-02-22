@@ -141,6 +141,37 @@ public:
     }
 };
 
+class Cylinder : public Entity
+{
+public:
+public:
+    Vec3f center;
+    float radius;
+    float height;
+
+    Cylinder(const Vec3f &c, const float r, const float h) : center(c), radius(r), height(h) {}
+
+    float sdf(const Vec3f &pos) const
+    {
+        // Translate the point to the center of the cylinder
+        Vec3f p = pos - center;
+
+        // Calculate the horizontal and vertical distances from p
+        float dxz = sqrt(p.x * p.x + p.z * p.z) - radius;
+        float dy = fabs(p.y) - height * 0.5f;
+
+        // Calculate the signed distance
+        float distance = fmaxf(dxz, dy);
+
+        // If the point is inside the cylinder, the distance is negative
+        if (distance <= 0.0f)
+        {
+            return -distance;
+        }
+        return distance;
+    }
+};
+
 class Shape
 {
 public:

@@ -17,18 +17,35 @@ float lighting(const Vec3f &p)
 
 float map(const Vec3f &orig, Vec3f *color = nullptr)
 {
-    Sphere sphere1(Vec3f(0.0, 1.0, -5.0), 1.0);
-    Sphere sphere2(Vec3f(0.0, 0.0, -5.0), 1.0);
-    Sphere sphere3(Vec3f(0.0, -1.0, -5.0), 1.0);
+    Sphere sphere1(Vec3f(0.0, 1.55, -5.0), .65);
+    Sphere sphere2(Vec3f(0.0, 0.3, -5.0), 1.0);
+    Sphere sphere3(Vec3f(0.0, -1.5, -5.0), 1.5);
+    Shape snow({&sphere1, &sphere2, &sphere3}, Vec3f(1, 1., 1), 0.1, 0.1);
 
-    Shape shape({&sphere1, &sphere2, &sphere3}, Vec3f(1.0, 0.5, 1.0), 0.0, 0.0);
+    Sphere right_eye(Vec3f(0.25, 1.8, -4.5), 0.12);
+    Sphere left_eye(Vec3f(-0.25, 1.8, -4.5), 0.12);
+    Shape eyes({&right_eye, &left_eye}, Vec3f(0, 0, 0), 0., 0.);
 
-    Sphere sphere4(Vec3f(-1.0, 1.0, -5.0), 0.7);
-    Sphere sphere5(Vec3f(1.0, 1.0, -5.0), 0.7);
+    Sphere button1(Vec3f(0.0, 0.5, -3.0), 0.1);
+    Sphere button2(Vec3f(0.0, 0, -3.0), 0.1);
+    Sphere button3(Vec3f(0.0, -0.4, -0.5), 0.08);
+    Sphere button4(Vec3f(0.0, -.8, -.5), 0.08);
+    Shape buttons({&button1, &button2, &button3, &button4}, Vec3f(0.05, 0.05, 0.05), 0., 0.);
 
-    Shape shape2({&sphere4, &sphere5}, Vec3f(0.5, 1.0, 0.5), 0.1, 0.1);
+    Cylinder hat_base(Vec3f(0.0, 2.1, -5.0), 1, 0.01);
+    Cylinder hat_top(Vec3f(0.0, 2.6, -5.0), 0.5, 1.);
+    Shape hat({&hat_base, &hat_top}, Vec3f(0.5, 0.5, 0.5), 0., 0.);
 
-    std::vector<Shape> shapes = {shape, shape2};
+    Cylinder rubber(Vec3f(0.0, 2.6, -5.0), 0.52, 0.2);
+    Shape rubbers({&rubber}, Vec3f(0.8, 0.5, 0.5), 0., 0.);
+
+    // Sphere sphere4(Vec3f(-1.0, 1.0, -5.0), 0.7);
+    // Sphere sphere5(Vec3f(1.0, 1.0, -5.0), 0.7);
+
+    // Shape shape2({&sphere4, &sphere5}, Vec3f(0.5, 1.0, 0.5), 0.1, 0.1);
+
+    // std::vector<Shape> shapes = {shape, shape2};
+    std::vector<Shape> shapes = {snow, eyes, buttons, hat, rubbers};
 
     float d = RAY_MAX_DIST;
     for (size_t i = 0; i < shapes.size(); i++)
