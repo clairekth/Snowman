@@ -36,16 +36,10 @@ float map(const Vec3f &orig, Vec3f *color = nullptr)
     Cylinder hat_top(Vec3f(0.0, 2.6, -5.0), 0.5, 1.);
     Shape hat({&hat_base, &hat_top}, Vec3f(0.5, 0.5, 0.5), 0., 0.);
 
-    Cylinder rubber(Vec3f(0.0, 2.6, -5.0), 0.52, 0.2);
-    Shape rubbers({&rubber}, Vec3f(0.8, 0.5, 0.5), 0., 0.);
+    Cylinder ribbon(Vec3f(0.0, 2.6, -5.0), 0.52, 0.2);
+    Shape ribbons({&ribbon}, Vec3f(0.8, 0.5, 0.5), 0., 0.);
 
-    // Sphere sphere4(Vec3f(-1.0, 1.0, -5.0), 0.7);
-    // Sphere sphere5(Vec3f(1.0, 1.0, -5.0), 0.7);
-
-    // Shape shape2({&sphere4, &sphere5}, Vec3f(0.5, 1.0, 0.5), 0.1, 0.1);
-
-    // std::vector<Shape> shapes = {shape, shape2};
-    std::vector<Shape> shapes = {snow, eyes, buttons, hat, rubbers};
+    std::vector<Shape> shapes = {snow, eyes, buttons, hat, ribbons};
 
     float d = RAY_MAX_DIST;
     for (size_t i = 0; i < shapes.size(); i++)
