@@ -18,6 +18,16 @@
 /******************************************************************
  * FUNCTIONS                                                      *
  ******************************************************************/
+Vec3f clamp(const Vec3f &v, const Vec3f &l, const Vec3f &h)
+{
+    return Vec3f(std::max(l.x, std::min(h.x, v.x)), std::max(l.y, std::min(h.y, v.y)), std::max(l.z, std::min(h.z, v.z)));
+}
+
+Vec3f round(const Vec3f &v)
+{
+    return Vec3f(std::round(v.x), std::round(v.y), std::round(v.z));
+}
+
 template <typename T>
 inline T lerp(const T &v0, const T &v1, float t)
 {

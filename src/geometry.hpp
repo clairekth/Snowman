@@ -68,6 +68,22 @@ vec<DIM, T> operator+(vec<DIM, T> lhs, const vec<DIM, T> &rhs)
     return lhs;
 }
 
+template <size_t DIM, typename T, typename U>
+vec<DIM, T> operator+(vec<DIM, T> lhs, const U &rhs)
+{
+    for (size_t i = DIM; i--; lhs[i] += rhs)
+        ;
+    return lhs;
+}
+
+template <size_t DIM, typename T, typename U>
+vec<DIM, T> operator-(vec<DIM, T> lhs, const U &rhs)
+{
+    for (size_t i = DIM; i--; lhs[i] -= rhs)
+        ;
+    return lhs;
+}
+
 template <size_t DIM, typename T>
 vec<DIM, T> operator-(vec<DIM, T> lhs, const vec<DIM, T> &rhs)
 {
@@ -89,6 +105,15 @@ template <size_t DIM, typename T>
 vec<DIM, T> operator-(const vec<DIM, T> &lhs)
 {
     return lhs * T(-1);
+}
+
+template <size_t DIM, typename T>
+vec<DIM, T> operator/(const vec<DIM, T> &lhs, const T &rhs)
+{
+    vec<DIM, T> ret;
+    for (size_t i = DIM; i--; ret[i] = lhs[i] / rhs)
+        ;
+    return ret;
 }
 
 typedef vec<3, float> Vec3f;
