@@ -17,10 +17,10 @@ float lighting(const Vec3f &p)
 
 float map(const Vec3f &orig, Vec3f *color = nullptr)
 {
-    Sphere sphere1(Vec3f(0.0, 1.55, -5.0), .65);
-    Sphere sphere2(Vec3f(0.0, 0.3, -5.0), 1.0);
-    Sphere sphere3(Vec3f(0.0, -1.5, -5.0), 1.5);
-    Shape snow({&sphere1, &sphere2, &sphere3}, Vec3f(1, 1., 1), 0.1, 0.1);
+    Sphere sphere_top(Vec3f(0.0, 1.55, -5.0), .65);
+    Sphere sphere_middle(Vec3f(0.0, 0.3, -5.0), 1.0);
+    Sphere sphere_bottom(Vec3f(0.0, -1.5, -5.0), 1.5);
+    Shape snow({&sphere_top, &sphere_middle, &sphere_bottom}, Vec3f(1, 1., 1), 0.1, 0.1);
 
     Sphere right_eye(Vec3f(0.25, 1.8, -4.5), 0.12);
     Sphere left_eye(Vec3f(-0.25, 1.8, -4.5), 0.12);
@@ -39,7 +39,22 @@ float map(const Vec3f &orig, Vec3f *color = nullptr)
     Cylinder ribbon(Vec3f(0.0, 2.6, -5.0), 0.52, 0.2);
     Shape ribbons({&ribbon}, Vec3f(0.8, 0.5, 0.5), 0., 0.);
 
-    std::vector<Shape> shapes = {snow, eyes, buttons, hat, ribbons};
+    Capsule left_arm(Vec3f(-0.7, 0.3, -4.5), Vec3f(-2.5, -0.3, -4.2), 0.05);
+    Capsule left_finger_1(Vec3f(-1.7, -0.05, -4.3), Vec3f(-2.2, 0.29, -4.25), 0.05);
+    Capsule left_finger_2(Vec3f(-2.1, -0.20, -4.25), Vec3f(-2.35, -0.55, -4.18), 0.05);
+
+
+    Capsule right_arm(Vec3f(.7, 0.3, -4.5), Vec3f(2.5, -0.3, -4.2), 0.05);
+    Capsule right_finger_1(Vec3f(1.7, -0.05, -4.3), Vec3f(2.2, 0.29, -4.25), 0.05);
+    Capsule right_finger_2(Vec3f(2.1, -0.20, -4.26), Vec3f(2.35, -0.55, -4.18), 0.05);
+
+    Shape arms({&left_arm, &right_arm, &left_finger_1, &left_finger_2, &right_finger_1, &right_finger_2}, Vec3f(0.467, 0.275, 0.204), 0.1, 0.001);
+    
+    Sphere nose_base(Vec3f(0.0, 1.50, -4.3), 0.15);
+    Sphere nose_top(Vec3f(0.0, 1.50, -3.9), 0.02);
+    Shape nose({&nose_base, &nose_top}, Vec3f(1, 0.5, 0.31), 0.0001, 0.85);
+
+    std::vector<Shape> shapes = {nose, snow, eyes, arms, buttons, hat, ribbons};
 
     float d = RAY_MAX_DIST;
     for (size_t i = 0; i < shapes.size(); i++)
@@ -80,16 +95,46 @@ Vec3f distance_field_normal(const Vec3f &pos)
     return Vec3f(nx, ny, nz).normalize();
 }
 
-Vec3f render(Camera &camera)
+Vec3f render(Camera &camera, std::vector<Vec3f> *env_map, const bool is_loaded, const int env_map_width, const int env_map_height)
 {
     Vec3f color = Vec3f(1, 1, 1); // Default color
     Vec3f hit;
-    if (!sphere_trace(camera, hit, color))
-        return Vec3f(0.2, 0.7, 0.8);
+    if (!sphere_trace(camera, hit, color) && is_loaded) {
+        // FIXME: This is not working
+        float theta = acosf(camera.dir.y) / M_PI;
+        float phi = (atan2f(camera.dir.z, camera.dir.x) + M_PI) / (2 * M_PI);
+        int x = std::min(int(phi * env_map_width), env_map_width - 1);
+        int y = std::min(int(theta * env_map_height), env_map_height - 1);
+        color = (*env_map)[x + y * env_map_width];
+    }
 
     color = color * lighting(hit);
 
     return color;
+}
+
+bool load_env_map(std::vector<Vec3f> *env_map, int *env_map_width, int *env_map_height)
+{
+    int width, height, channels;
+    unsigned char *data = stbi_load("../envmap.jpg", &width, &height, &channels, 0);
+    if (!data)
+    {
+        std::cerr << "Error: failed to load texture" << std::endl;
+        return false;
+    }
+    env_map->resize(width * height);
+    for (int j = 0; j < height; j++)
+    {
+        for (int i = 0; i < width; i++)
+        {
+            int idx = (i + j * width) * channels;
+            (*env_map)[i + j * width] = Vec3f(data[idx] / 255.f, data[idx + 1] / 255.f, data[idx + 2] / 255.f);
+        }
+    }
+    stbi_image_free(data);
+    *env_map_width = width;
+    *env_map_height = height;
+    return true;
 }
 
 int main(int argc, char **argv)
@@ -98,23 +143,29 @@ int main(int argc, char **argv)
     if (argc > 1)
         factor = std::stoi(argv[1]);
     const int width = WIDTH * factor, height = HEIGHT * factor;
-    const float fov = M_PI / 3.;
     float progress = 0;
     std::vector<Vec3f> framebuffers(width * height);
     std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
+    std::vector<Vec3f> env_map;
+    int env_map_width, env_map_height;
+    bool is_loaded = load_env_map(&env_map, &env_map_width, &env_map_height);
 #pragma omp parallel for
     for (int j = 0; j < height; j++)
     { // actual rendering loop
         show_progress(progress, width, height);
         for (int i = 0; i < width; i++)
         {
-            Vec3f origin(0, 0, 3);
-            float dir_x = (i + 0.5) - width / 2.;
-            float dir_y = -(j + 0.5) + height / 2.; // this flips the image at the same time
-            float dir_z = -height / (2. * tan(fov / 2.));
-            Vec3f dir = Vec3f(dir_x, dir_y, dir_z).normalize();
-            Camera camera(origin, dir);
-            framebuffers[i + j * width] = render(camera);
+            // Normalize point to [-1, 1]
+            float x = i / (float)width * 2 - 1;
+            float y = j / (float)height * 2 - 1;
+            y *= -height / (float)width; // Swap y to match the orientation of the image and correct the aspect ratio
+
+            const float fov = 1.;
+            Vec3f origin(0, 1.0, 0.0);
+            Vec3f target(0.0, 0.0, -5.0);
+
+            Camera camera(origin, target, fov, x, y);
+            framebuffers[i + j * width] = render(camera, &env_map, is_loaded, env_map_width, env_map_height);
             progress++;
         }
     }

@@ -11,7 +11,7 @@
  ******************************************************************/
 #define RAY_EPSILON 0.001f
 #define RAY_MAX_DIST 20.f
-#define RAY_ITERATIONS 512
+#define RAY_ITERATIONS 204
 #define WIDTH 800
 #define HEIGHT 600
 
@@ -125,7 +125,14 @@ struct Camera
     Vec3f pos;
     Vec3f dir;
 
-    Camera(const Vec3f &pos, const Vec3f &dir) : pos(pos), dir(dir) {}
+    Camera(const Vec3f &pos, const Vec3f &target, const float fov, const float x, const float y) : pos(pos) {
+        // Camera direction
+        Vec3f forward = (target - pos).normalize();
+        Vec3f right = Vec3f(0, 1, 0).cross(forward).normalize();
+        Vec3f up = forward.cross(right);
+
+        dir = forward * fov + right * x + up * y;
+    }
 };
 
 /******************************************************************
@@ -154,7 +161,6 @@ public:
 class Cylinder : public Entity
 {
 public:
-public:
     Vec3f center;
     float radius;
     float height;
@@ -179,6 +185,24 @@ public:
             return -distance;
         }
         return distance;
+    }
+};
+
+class Capsule : public Entity
+{
+public:
+    Vec3f a;
+    Vec3f b;
+    float radius;
+
+    Capsule(const Vec3f &a, const Vec3f &b, const float r) : a(a), b(b), radius(r) {}
+
+    float sdf(const Vec3f &pos) const
+    {
+        Vec3f pa = pos - a;
+        Vec3f ba = b - a;
+        float h = fmaxf(0.f, fminf(1.f, pa * ba / (ba * ba)));
+        return (pa - ba * h).norm() - radius;
     }
 };
 
