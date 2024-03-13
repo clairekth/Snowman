@@ -43,13 +43,12 @@ float map(const Vec3f &orig, Vec3f *color = nullptr)
     Capsule left_finger_1(Vec3f(-1.7, -0.05, -4.3), Vec3f(-2.2, 0.29, -4.25), 0.05);
     Capsule left_finger_2(Vec3f(-2.1, -0.20, -4.25), Vec3f(-2.35, -0.55, -4.18), 0.05);
 
-
     Capsule right_arm(Vec3f(.7, 0.3, -4.5), Vec3f(2.5, -0.3, -4.2), 0.05);
     Capsule right_finger_1(Vec3f(1.7, -0.05, -4.3), Vec3f(2.2, 0.29, -4.25), 0.05);
     Capsule right_finger_2(Vec3f(2.1, -0.20, -4.26), Vec3f(2.35, -0.55, -4.18), 0.05);
 
     Shape arms({&left_arm, &right_arm, &left_finger_1, &left_finger_2, &right_finger_1, &right_finger_2}, Vec3f(0.467, 0.275, 0.204), 0.1, 0.001);
-    
+
     Sphere nose_base(Vec3f(0.0, 1.50, -4.3), 0.15);
     Sphere nose_top(Vec3f(0.0, 1.50, -3.9), 0.02);
     Shape nose({&nose_base, &nose_top}, Vec3f(1, 0.5, 0.31), 0.0001, 0.85);
@@ -99,16 +98,22 @@ Vec3f render(Camera &camera, std::vector<Vec3f> *env_map, const bool is_loaded, 
 {
     Vec3f color = Vec3f(1, 1, 1); // Default color
     Vec3f hit;
-    if (!sphere_trace(camera, hit, color) && is_loaded) {
+    if (!sphere_trace(camera, hit, color) && is_loaded)
+    {
         // FIXME: This is not working
-        float theta = acosf(camera.dir.y) / M_PI;
-        float phi = (atan2f(camera.dir.z, camera.dir.x) + M_PI) / (2 * M_PI);
-        int x = std::min(int(phi * env_map_width), env_map_width - 1);
-        int y = std::min(int(theta * env_map_height), env_map_height - 1);
+        // float theta = acosf(camera.dir.y) / M_PI;
+        // float phi = (atan2f(camera.dir.z, camera.dir.x) + M_PI) / (2 * M_PI);
+        // int x = std::min(int(phi * env_map_width), env_map_width - 1);
+        // int y = std::min(int(theta * env_map_height), env_map_height - 1);
+        int x = ((atan2(camera.dir.z, camera.dir.x) + 5) / (2 * M_PI)) * env_map_width;
+        int y = ((acos(camera.dir.y) / M_PI)) * env_map_height;
+
         color = (*env_map)[x + y * env_map_width];
     }
-
-    color = color * lighting(hit);
+    else
+    {
+        color = color * lighting(hit);
+    }
 
     return color;
 }
@@ -161,7 +166,7 @@ int main(int argc, char **argv)
             y *= -height / (float)width; // Swap y to match the orientation of the image and correct the aspect ratio
 
             const float fov = 1.;
-            Vec3f origin(0, 1.0, 0.0);
+            Vec3f origin(0., 1.5, 1.);
             Vec3f target(0.0, 0.0, -5.0);
 
             Camera camera(origin, target, fov, x, y);
