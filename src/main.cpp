@@ -26,10 +26,10 @@ float map(const Vec3f &orig, Vec3f *color = nullptr)
     Sphere left_eye(Vec3f(-0.25, 1.8, -4.5), 0.12);
     Shape eyes({&right_eye, &left_eye}, Vec3f(0, 0, 0), 0., 0.);
 
-    Sphere button1(Vec3f(0.0, 0.5, -3.0), 0.1);
-    Sphere button2(Vec3f(0.0, 0, -3.0), 0.1);
-    Sphere button3(Vec3f(0.0, -0.4, -0.5), 0.08);
-    Sphere button4(Vec3f(0.0, -.8, -.5), 0.08);
+    Sphere button1(Vec3f(0.0, 0.5, -4.02), 0.1);
+    Sphere button2(Vec3f(0.0, 0.1, -4.04), 0.1);
+    Sphere button3(Vec3f(0.0, -0.6, -3.6), 0.08);
+    Sphere button4(Vec3f(0.0, -1.0, -3.5), 0.08);
     Shape buttons({&button1, &button2, &button3, &button4}, Vec3f(0.05, 0.05, 0.05), 0., 0.);
 
     Cylinder hat_base(Vec3f(0.0, 2.1, -5.0), 1, 0.01);
@@ -106,7 +106,7 @@ Vec3f render(Camera &camera, std::vector<Vec3f> *env_map, const bool is_loaded, 
         // int x = std::min(int(phi * env_map_width), env_map_width - 1);
         // int y = std::min(int(theta * env_map_height), env_map_height - 1);
         int x = ((atan2(camera.dir.z, camera.dir.x) + 5) / (2 * M_PI)) * env_map_width;
-        int y = ((acos(camera.dir.y) / M_PI)) * env_map_height;
+        int y = ((acos(camera.dir.y) / M_PI)) * env_map_height * 1.5;
 
         color = (*env_map)[x + y * env_map_width];
     }
@@ -166,10 +166,17 @@ int main(int argc, char **argv)
             y *= -height / (float)width; // Swap y to match the orientation of the image and correct the aspect ratio
 
             const float fov = 1.;
-            Vec3f origin(0., 1.5, 1.);
+            Vec3f origin(1., 1.5, 4.);
             Vec3f target(0.0, 0.0, -5.0);
 
+            float dir_x = (i + 0.5) - width / 2.;
+            float dir_y = -(j + 0.5) + height / 2.; // this flips the image at the same time
+            float dir_z = -height / (2. * tan(fov / 2.));
+            Vec3f dir = Vec3f(dir_x, dir_y, dir_z).normalize();
+
             Camera camera(origin, target, fov, x, y);
+
+            camera.dir = dir;
             framebuffers[i + j * width] = render(camera, &env_map, is_loaded, env_map_width, env_map_height);
             progress++;
         }

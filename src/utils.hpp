@@ -130,7 +130,6 @@ struct Camera
         Vec3f forward = (target - pos).normalize();
         Vec3f right = Vec3f(0, 1, 0).cross(forward).normalize();
         Vec3f up = forward.cross(right);
-
         dir = forward * fov + right * x + up * y;
     }
 };
