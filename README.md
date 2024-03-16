@@ -32,7 +32,7 @@ We also used the smooth-union function to create a smooth transition between the
 ### Installing and running
 
 ```bash
-git clone https://github.com/clairekth/Snowman.git
+git clone --recurse-submodules https://github.com/clairekth/Snowman.git
 cd Snowman
 mkdir build && cd build
 cmake ..
