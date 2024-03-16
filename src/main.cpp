@@ -1,20 +1,25 @@
-#include "main.hpp"
+#define _USE_MATH_DEFINES
+#include <cmath>
+#include <algorithm>
+#include <limits>
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <chrono>
+#include "geometry.hpp"
+#include "utils.hpp"
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-float lighting(const Vec3f &p)
-{
-    Vec3f light_pos = Vec3f(-5, 5, 2);             // Position of the light source
-    Vec3f light_dir = (light_pos - p).normalize(); // Direction of the light source from the hit point
-
-    Vec3f n = distance_field_normal(p); // Normal at the hit point
-
-    return std::max(0.f, n.dot(light_dir));
-}
-
+/**
+ * @brief Function to compute the distance between a point and the scene
+ *
+ * @param orig Origin of the ray
+ * @return float Distance between the point and the scene
+ */
 float map(const Vec3f &orig, Vec3f *color = nullptr)
 {
     Sphere sphere_top(Vec3f(0.0, 1.55, -5.0), .65);
@@ -69,6 +74,48 @@ float map(const Vec3f &orig, Vec3f *color = nullptr)
     return d;
 }
 
+/**
+ * @brief Function to compute the normal of the distance field at a given position
+ *
+ * @param pos Position to compute the normal from
+ * @return Vec3f Normal of the distance field at the given position
+ */
+Vec3f distance_field_normal(const Vec3f &pos)
+{
+    const float eps = 0.1;
+    float d = map(pos);
+    float nx = map(pos + Vec3f(eps, 0, 0)) - d;
+    float ny = map(pos + Vec3f(0, eps, 0)) - d;
+    float nz = map(pos + Vec3f(0, 0, eps)) - d;
+    return Vec3f(nx, ny, nz).normalize();
+}
+
+/**
+ * @brief Function to compute the lighting of a point in the scene
+ *
+ * @param p Position of the point
+ * @return float Lighting of the point
+ */
+float lighting(const Vec3f &p)
+{
+    Vec3f light_pos = Vec3f(-5, 5, 2);             // Position of the light source
+    Vec3f light_dir = (light_pos - p).normalize(); // Direction of the light source from the hit point
+
+    Vec3f n = distance_field_normal(p); // Normal at the hit point
+
+    return std::max(0.f, n.dot(light_dir));
+}
+
+/**
+ * @brief Function to trace a ray and check if it intersects with the scene
+ *
+ * @param orig Origin of the ray
+ * @param dir Direction of the ray
+ * @param pos Position of the intersection
+ * @param color Color of the intersection
+ * @return true If the ray intersects with the scene
+ * @return false If the ray does not intersect with the scene
+ */
 bool sphere_trace(Camera &camera, Vec3f &pos, Vec3f &color)
 {
     pos = camera.pos;
@@ -84,27 +131,19 @@ bool sphere_trace(Camera &camera, Vec3f &pos, Vec3f &color)
     return false;
 }
 
-Vec3f distance_field_normal(const Vec3f &pos)
-{
-    const float eps = 0.1;
-    float d = map(pos);
-    float nx = map(pos + Vec3f(eps, 0, 0)) - d;
-    float ny = map(pos + Vec3f(0, eps, 0)) - d;
-    float nz = map(pos + Vec3f(0, 0, eps)) - d;
-    return Vec3f(nx, ny, nz).normalize();
-}
-
+/**
+ * @brief Function to render the scene
+ *
+ * @param orig Origin of the ray
+ * @param dir Direction of the ray
+ * @return Vec3f Color of the pixel
+ */
 Vec3f render(Camera &camera, std::vector<Vec3f> *env_map, const bool is_loaded, const int env_map_width, const int env_map_height)
 {
     Vec3f color = Vec3f(1, 1, 1); // Default color
     Vec3f hit;
     if (!sphere_trace(camera, hit, color) && is_loaded)
     {
-        // FIXME: This is not working
-        // float theta = acosf(camera.dir.y) / M_PI;
-        // float phi = (atan2f(camera.dir.z, camera.dir.x) + M_PI) / (2 * M_PI);
-        // int x = std::min(int(phi * env_map_width), env_map_width - 1);
-        // int y = std::min(int(theta * env_map_height), env_map_height - 1);
         int x = ((atan2(camera.dir.z, camera.dir.x) + 5) / (2 * M_PI)) * env_map_width;
         int y = ((acos(camera.dir.y) / M_PI)) * env_map_height * 1.5;
 
@@ -160,23 +199,10 @@ int main(int argc, char **argv)
         show_progress(progress, width, height);
         for (int i = 0; i < width; i++)
         {
-            // Normalize point to [-1, 1]
-            float x = i / (float)width * 2 - 1;
-            float y = j / (float)height * 2 - 1;
-            y *= -height / (float)width; // Swap y to match the orientation of the image and correct the aspect ratio
-
-            const float fov = 1.;
+            const float fov = M_PI / 3.;
             Vec3f origin(1., 1.5, 4.);
-            Vec3f target(0.0, 0.0, -5.0);
+            Camera camera(origin, fov, i, j, width, height);
 
-            float dir_x = (i + 0.5) - width / 2.;
-            float dir_y = -(j + 0.5) + height / 2.; // this flips the image at the same time
-            float dir_z = -height / (2. * tan(fov / 2.));
-            Vec3f dir = Vec3f(dir_x, dir_y, dir_z).normalize();
-
-            Camera camera(origin, target, fov, x, y);
-
-            camera.dir = dir;
             framebuffers[i + j * width] = render(camera, &env_map, is_loaded, env_map_width, env_map_height);
             progress++;
         }

@@ -2,7 +2,7 @@
 #define UTILS_HPP
 
 #include "geometry.hpp"
-#include "main.hpp"
+#include <iostream>
 #include <vector>
 #define M_PI 3.14159265358979323846
 
@@ -12,22 +12,45 @@
 #define RAY_EPSILON 0.001f
 #define RAY_MAX_DIST 20.f
 #define RAY_ITERATIONS 204
-#define WIDTH 800
-#define HEIGHT 600
+#define WIDTH 1280
+#define HEIGHT 720
 
 /******************************************************************
  * FUNCTIONS                                                      *
  ******************************************************************/
+
+/**
+ * @brief Function to clamp a vector between two vectors
+ *
+ * @param v Vector to clamp
+ * @param l Low vector for clamping
+ * @param h High vector for clamping
+ * @return Vec3f Clamped vector
+ */
 Vec3f clamp(const Vec3f &v, const Vec3f &l, const Vec3f &h)
 {
     return Vec3f(std::max(l.x, std::min(h.x, v.x)), std::max(l.y, std::min(h.y, v.y)), std::max(l.z, std::min(h.z, v.z)));
 }
 
+/**
+ * @brief Function to round a vector
+ *
+ * @param v Vector to round
+ * @return Vec3f Rounded vector
+ */
 Vec3f round(const Vec3f &v)
 {
     return Vec3f(std::round(v.x), std::round(v.y), std::round(v.z));
 }
 
+/**
+ * @brief Function to linearly interpolate between two vectors
+ *
+ * @param v0 First vector
+ * @param v1 Second vector
+ * @param t Interpolation factor
+ * @return Vec3f Interpolated vector
+ */
 template <typename T>
 inline T lerp(const T &v0, const T &v1, float t)
 {
@@ -124,13 +147,13 @@ struct Camera
 {
     Vec3f pos;
     Vec3f dir;
-
-    Camera(const Vec3f &pos, const Vec3f &target, const float fov, const float x, const float y) : pos(pos) {
+    Camera(const Vec3f &pos, const float fov, const float i, const float j, const float width, const float height) : pos(pos)
+    {
         // Camera direction
-        Vec3f forward = (target - pos).normalize();
-        Vec3f right = Vec3f(0, 1, 0).cross(forward).normalize();
-        Vec3f up = forward.cross(right);
-        dir = forward * fov + right * x + up * y;
+        float dir_x = (i + 0.5) - width / 2.;
+        float dir_y = -(j + 0.5) + height / 2.; // this flips the image at the same time
+        float dir_z = -height / (2. * tan(fov / 2.));
+        dir = Vec3f(dir_x, dir_y, dir_z).normalize();
     }
 };
 
